@@ -14,6 +14,38 @@ set "STEAM_USER_ID=76561199557313614"
 set "CONFIG_BACKUP_BASE_PATH=%LOCALAPPDATA%\SaberBackup\Space Marine 2\storage\steam\user\%STEAM_USER_ID%\Main"
 set "ORIGINAL_CONFIG_PATH=%LOCALAPPDATA%\Saber\Space Marine 2\storage\steam\user\%STEAM_USER_ID%\Main\config"
 
+:: Backup Management Configuration
+set "MAX_BACKUPS=10"
+
+:: Function to clean up old backup directories
+:cleanup_old_backups
+echo Cleaning up old backup directories (keeping only %MAX_BACKUPS% most recent)...
+set "backup_count=0"
+set "deleted_count=0"
+
+:: Count total backups and delete oldest ones if exceeding MAX_BACKUPS
+for /f "delims=" %%d in ('dir "%CONFIG_BACKUP_BASE_PATH%\config_*" /b /ad /o-d 2^>nul') do (
+    set /a backup_count+=1
+    if !backup_count! gtr %MAX_BACKUPS% (
+        echo   Deleting old backup: %%d
+        rmdir /s /q "%CONFIG_BACKUP_BASE_PATH%\%%d" 2>nul
+        if not errorlevel 1 (
+            set /a deleted_count+=1
+            echo   Successfully deleted: %%d
+        ) else (
+            echo   Warning: Could not delete %%d
+        )
+    )
+)
+
+if %deleted_count% gtr 0 (
+    echo   Cleanup complete: %deleted_count% old backup(s) removed
+) else (
+    echo   No cleanup needed: backup count (%backup_count%) is within limit (%MAX_BACKUPS%)
+)
+echo.
+goto :eof
+
 echo.
 echo ========================================
 echo   Space Marine 2 Mod Switcher v1.0
@@ -183,6 +215,9 @@ if exist "%ORIGINAL_CONFIG_PATH%" (
     ) else (
         echo   Config files backed up successfully to: config_!NEW_TIMESTAMP%!
     )
+    
+    :: Clean up old backup directories
+    call :cleanup_old_backups
 ) else (
     echo No original config found. Skipping config backup.
 )
