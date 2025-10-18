@@ -60,21 +60,22 @@ if not exist "%CONFIG_BACKUP_PATH%" (
 
 :: Check current state
 set "MODS_ACTIVE=0"
-dir "%MODS_PATH%\*.pak" >nul 2>&1
-if not errorlevel 1 set "MODS_ACTIVE=1"
+for %%f in ("%MODS_PATH%\*.pak") do set "MODS_ACTIVE=1"
 
-echo DEBUG: MODS_ACTIVE = %MODS_ACTIVE%
 echo Current state:
-
-if %MODS_ACTIVE%==1 (
+if !MODS_ACTIVE!==1 (
     echo   Mods are currently ACTIVE
     echo   Will switch to: DISABLE mods (backup config, move mods to unused_mods)
-    echo.
-    goto :disable_mods
 ) else (
     echo   Mods are currently INACTIVE
     echo   Will switch to: ENABLE mods (restore config, copy mods)
-    echo.
+)
+echo.
+
+:: Auto-toggle based on current state
+if !MODS_ACTIVE!==1 (
+    goto :disable_mods
+) else (
     goto :enable_mods
 )
 
