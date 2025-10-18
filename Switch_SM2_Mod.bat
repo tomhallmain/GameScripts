@@ -67,8 +67,12 @@ if !MODS_ACTIVE!==1 (
     echo   Mods are currently ACTIVE
     echo   Will switch to: DISABLE mods (backup config, move mods to unused_mods)
 ) else (
-    echo   Mods are currently INACTIVE
-    echo   Will switch to: ENABLE mods (restore config, copy mods)
+    :: Extra check needed: without this, both ACTIVE and INACTIVE messages would show
+    :: when MODS_ACTIVE=1 due to delayed expansion timing issues
+    if !MODS_ACTIVE!==0 (
+        echo   Mods are currently INACTIVE
+        echo   Will switch to: ENABLE mods (restore config, copy mods)
+    )
 )
 echo.
 
