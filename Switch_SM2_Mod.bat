@@ -11,7 +11,7 @@ set "GAME_PATH=%STEAM_LIBRARY_PATH%\steamapps\common\Space Marine 2"
 set "MODS_PATH=%GAME_PATH%\client_pc\root\mods"
 set "UNUSED_MODS_PATH=%GAME_PATH%\client_pc\root\unused_mods"
 set "STEAM_USER_ID=76561199557313614"
-set "CONFIG_BACKUP_PATH=%LOCALAPPDATA%\SaberBackup\Space Marine 2\storage\steam\user\%STEAM_USER_ID%\Main\config"
+set "CONFIG_BACKUP_BASE_PATH=%LOCALAPPDATA%\SaberBackup\Space Marine 2\storage\steam\user\%STEAM_USER_ID%\Main"
 set "ORIGINAL_CONFIG_PATH=%LOCALAPPDATA%\Saber\Space Marine 2\storage\steam\user\%STEAM_USER_ID%\Main\config"
 
 echo.
@@ -47,12 +47,12 @@ if not exist "%UNUSED_MODS_PATH%" (
     )
 )
 
-:: Create config backup directory if it doesn't exist
-if not exist "%CONFIG_BACKUP_PATH%" (
-    echo Creating config backup directory...
-    mkdir "%CONFIG_BACKUP_PATH%" 2>nul
+:: Create config backup base directory if it doesn't exist
+if not exist "%CONFIG_BACKUP_BASE_PATH%" (
+    echo Creating config backup base directory...
+    mkdir "%CONFIG_BACKUP_BASE_PATH%" 2>nul
     if errorlevel 1 (
-        echo Error: Could not create config backup directory
+        echo Error: Could not create config backup base directory
         pause
         exit /b 1
     )
@@ -84,8 +84,15 @@ echo.
 echo Enabling mods and restoring config...
 
 :: First, restore config files if backup exists
-if exist "%CONFIG_BACKUP_PATH%" (
-    echo Restoring config files...
+:: Find the most recent config backup directory
+set "LATEST_BACKUP="
+for /f "delims=" %%d in ('dir "%CONFIG_BACKUP_BASE_PATH%\config_*" /b /ad /o-d 2^>nul') do (
+    if not defined LATEST_BACKUP set "LATEST_BACKUP=%%d"
+)
+
+if defined LATEST_BACKUP (
+    set "CONFIG_BACKUP_PATH=%CONFIG_BACKUP_BASE_PATH%\!LATEST_BACKUP!"
+    echo Restoring config files from: !LATEST_BACKUP!
     if not exist "%ORIGINAL_CONFIG_PATH%" (
         echo Original config directory doesn't exist. Creating it...
         mkdir "%ORIGINAL_CONFIG_PATH%" 2>nul
@@ -96,7 +103,7 @@ if exist "%CONFIG_BACKUP_PATH%" (
         )
     )
     
-    xcopy "%CONFIG_BACKUP_PATH%\*" "%ORIGINAL_CONFIG_PATH%\" /E /I /Y >nul 2>&1
+    xcopy "!CONFIG_BACKUP_PATH!\*" "%ORIGINAL_CONFIG_PATH%\" /E /I /Y >nul 2>&1
     if errorlevel 1 (
         echo Error: Could not restore config files
     ) else (
@@ -142,11 +149,35 @@ echo Disabling mods and backing up config...
 :: First, backup config files if they exist
 if exist "%ORIGINAL_CONFIG_PATH%" (
     echo Backing up config files...
-    xcopy "%ORIGINAL_CONFIG_PATH%\*" "%CONFIG_BACKUP_PATH%\" /E /I /Y >nul 2>&1
+    
+    :: Clear any existing timestamp variables to prevent inheritance
+    set "TIMESTAMP="
+    set "dt="
+    set "CONFIG_BACKUP_PATH="
+    
+    :: Create timestamped backup directory
+    :: Get current date and time in a reliable format
+    
+    :: Parse date and time into a timestamp
+    :: Format: YYYY-MM-DD_HHMMSS
+    set "NEW_TIMESTAMP=!date:~-4!-!date:~4,2!-!date:~7,2!_!time:~0,2!!time:~3,2!!time:~6,2!"
+    set "NEW_TIMESTAMP=!NEW_TIMESTAMP: =0!"
+    
+    set "CONFIG_BACKUP_PATH=%CONFIG_BACKUP_BASE_PATH%\config_!NEW_TIMESTAMP!"
+    
+    echo Creating backup directory: config_!NEW_TIMESTAMP!
+    mkdir "!CONFIG_BACKUP_PATH!" 2>nul
+    if errorlevel 1 (
+        echo Error: Could not create config backup directory: !CONFIG_BACKUP_PATH!
+        pause
+        goto :end
+    )
+    
+    xcopy "%ORIGINAL_CONFIG_PATH%\*" "!CONFIG_BACKUP_PATH!\" /E /I /Y >nul 2>&1
     if errorlevel 1 (
         echo Error: Could not backup config files
     ) else (
-        echo   Config files backed up successfully!
+        echo   Config files backed up successfully to: config_!NEW_TIMESTAMP%!
     )
 ) else (
     echo No original config found. Skipping config backup.
