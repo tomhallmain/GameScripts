@@ -17,35 +17,6 @@ set "ORIGINAL_CONFIG_PATH=%LOCALAPPDATA%\Saber\Space Marine 2\storage\steam\user
 :: Backup Management Configuration
 set "MAX_BACKUPS=10"
 
-:: Function to clean up old backup directories
-:cleanup_old_backups
-echo Cleaning up old backup directories (keeping only %MAX_BACKUPS% most recent)...
-set "backup_count=0"
-set "deleted_count=0"
-
-:: Count total backups and delete oldest ones if exceeding MAX_BACKUPS
-for /f "delims=" %%d in ('dir "%CONFIG_BACKUP_BASE_PATH%\config_*" /b /ad /o-d 2^>nul') do (
-    set /a backup_count+=1
-    if !backup_count! gtr %MAX_BACKUPS% (
-        echo   Deleting old backup: %%d
-        rmdir /s /q "%CONFIG_BACKUP_BASE_PATH%\%%d" 2>nul
-        if not errorlevel 1 (
-            set /a deleted_count+=1
-            echo   Successfully deleted: %%d
-        ) else (
-            echo   Warning: Could not delete %%d
-        )
-    )
-)
-
-if %deleted_count% gtr 0 (
-    echo   Cleanup complete: %deleted_count% old backup(s) removed
-) else (
-    echo   No cleanup needed: backup count (%backup_count%) is within limit (%MAX_BACKUPS%)
-)
-echo.
-goto :eof
-
 echo.
 echo ========================================
 echo   Space Marine 2 Mod Switcher v1.0
@@ -213,7 +184,7 @@ if exist "%ORIGINAL_CONFIG_PATH%" (
     if errorlevel 1 (
         echo Error: Could not backup config files
     ) else (
-        echo   Config files backed up successfully to: config_!NEW_TIMESTAMP%!
+        echo   Config files backed up successfully to: config_!NEW_TIMESTAMP!
     )
     
     :: Clean up old backup directories
@@ -248,6 +219,46 @@ for %%f in ("%MODS_PATH%\*.pak") do (
 echo.
 echo Mods have been disabled and config backed up! (Files moved to unused_mods as backup)
 pause
+goto :end
+
+
+
+:: Function to clean up old backup directories
+:cleanup_old_backups
+echo Cleaning up old backup directories (keeping only %MAX_BACKUPS% most recent)...
+set "backup_count=0"
+set "deleted_count=0"
+
+:: Create a temporary file to store directory list
+set "temp_file=%TEMP%\sm2_backup_list.txt"
+
+:: Get list of backup directories and store in temp file
+dir "%CONFIG_BACKUP_BASE_PATH%\config_*" /b /ad /o-d >"%temp_file%" 2>nul
+
+:: Process each backup directory
+for /f "usebackq delims=" %%d in ("%temp_file%") do (
+    set /a backup_count+=1
+    if !backup_count! gtr %MAX_BACKUPS% (
+        echo   Deleting old backup: %%d
+        rmdir /s /q "%CONFIG_BACKUP_BASE_PATH%\%%d" 2>nul
+        if not errorlevel 1 (
+            set /a deleted_count+=1
+            echo   Successfully deleted: %%d
+        ) else (
+            echo   Warning: Could not delete %%d
+        )
+    )
+)
+
+:: Clean up temporary file
+if exist "%temp_file%" del "%temp_file%" 2>nul
+
+if !deleted_count! gtr 0 (
+    echo   Cleanup complete: !deleted_count! old backups removed
+) else (
+    echo   No cleanup needed: backup count !backup_count! is within limit %MAX_BACKUPS%
+)
+echo.
 goto :end
 
 
